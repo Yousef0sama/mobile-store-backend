@@ -67,7 +67,7 @@ function login(req, res) {
                 });
                 res.cookie("jwt", refreshToken, {
                     httpOnly: true,
-                    secure: false,
+                    secure: true,
                     sameSite: "None",
                     maxAge: (0, functions_1.timeConvert)(4, "mo", "mi")
                 });

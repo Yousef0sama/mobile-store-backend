@@ -79,7 +79,7 @@ export default function login(req: any, res:any) {
 
         res.cookie("jwt", refreshToken, {
           httpOnly: true,
-          secure: false,
+          secure: true,
           sameSite: "None",
           maxAge: timeConvert(4, "mo", "mi")
         });

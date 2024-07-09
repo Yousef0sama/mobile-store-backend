@@ -88,7 +88,7 @@ export default async function register  (req: any, res: any) : Promise<void> {
 
         res.cookie("jwt", refreshToken, {
           httpOnly: true,
-          secure: false,
+          secure: true,
           sameSite: "None",
           maxAge: timeConvert(4, "mo", "mi")
         });
