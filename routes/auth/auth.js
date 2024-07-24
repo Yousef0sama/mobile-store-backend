@@ -18,6 +18,9 @@ router.use(express_1.default.json());
 router.post("/register", register_1.default);
 // login
 router.post("/login", login_1.default);
-router.get("/refresh", refresh_1.default);
+// logout
 router.post("/logout", logout_1.default);
+// GET
+// refresh token
+router.get("/refresh", refresh_1.default);
 exports.default = router;

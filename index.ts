@@ -7,7 +7,12 @@ import cookieParser from "cookie-parser"
 
 // routes
 
-import users from "./routes/auth/auth";
+import auth from "./routes/auth/auth";
+import addressForFrontend from "./routes/address/frontend/address";
+import addressForBackend from "./routes/address/backend/address";
+import bankCards from "./routes/bank_cards/bank_cards";
+import usersForFrontend from "./routes/users/frontend/users"
+import usersForBackend from "./routes/users/backend/users"
 
 // configs
 
@@ -29,7 +34,12 @@ app.use(express.json());
 
 // handlers
 
-app.use('/auth', users);
+app.use('/auth', auth);
+app.use('/users', usersForFrontend);
+app.use('/usersForBackend', usersForBackend);
+app.use('/address', addressForFrontend);
+app.use('/addressForBackend', addressForBackend);
+app.use('/bankCards', bankCards);
 
 // listen
 

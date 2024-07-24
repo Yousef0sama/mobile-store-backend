@@ -1,16 +1,28 @@
 
-export default function logout(req: any, res:any) {
+// imports
 
-  const cookies = req.cookies;
+import { Request, Response } from "express";
 
-  if (!cookies?.jwt) return res.sendStatus(204); // no content
+export default function logout(req: Request, res:Response) : void {
 
-  res.clearCookie("jwt", {
-    httpOnly: true,
-    sameSite: "None",
-    secure: false
-  });
+  try {
+    const cookies = req.cookies;
 
-  res.status(200).json({ massage : "logged out!" })
+    if (!cookies?.jwt) {
+      res.sendStatus(204); // no content
+      return;
+    }
+
+    res.clearCookie("jwt", {
+      httpOnly: true,
+      sameSite: "none",
+      secure: false
+    });
+
+    res.status(200).json({ massage : "logged out!" });
+
+  } catch (err) {
+    res.status(400).json(err);
+  }
 
 }
