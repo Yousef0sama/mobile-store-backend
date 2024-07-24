@@ -14,37 +14,32 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-// db
-const Conn_1 = require("../../../config/db/Conn");
+const axios_1 = __importDefault(require("axios"));
 // functions
-const functions_1 = require("../../../functions/functions");
+const time_convert_1 = __importDefault(require("../../../functions/time_convert/time_convert"));
+const check_inputs_1 = __importDefault(require("../../../functions/check_inputs/check_inputs"));
+const encode_1 = __importDefault(require("../../../functions/jwt/encode/encode"));
 function login(req, res) {
     try {
         const { email, password } = req.body;
         // check inputs
-        if (!(0, functions_1.checkType)(email, "string") || (0, functions_1.isEmpty)(email)) {
-            res.status(400).json({ masssage: "email can't be empty and must be string" });
+        if ((0, check_inputs_1.default)(email, "string", "email")) {
+            res.status(400).json({ message: (0, check_inputs_1.default)(email, "string", "email") });
             return;
         }
-        if (!(0, functions_1.checkType)(password, "string") || (0, functions_1.isEmpty)(password)) {
-            res.status(400).json({ masssage: "password can't be empty and must be string" });
+        if ((0, check_inputs_1.default)(password, "string", "password")) {
+            res.status(400).json({ message: (0, check_inputs_1.default)(password, "string", "password") });
             return;
         }
-        // connect to db
-        let connection = (0, Conn_1.createConnection)();
-        connection.connect();
-        // get user
-        connection.query(`SELECT * FROM users WHERE email = ?`, [email], (err, result) => __awaiter(this, void 0, void 0, function* () {
-            if (err) {
-                res.status(500).json(err);
-                connection.end();
-                return;
+        const host = `${req.protocol}://${req.get('host')}`;
+        axios_1.default.get(`${host}/usersForBackend/email/${email}`, {
+            headers: {
+                Authorization: `Bearer ${(0, encode_1.default)({}, process.env.BACKEND_KEY, 5)}`
             }
-            // check if user found
+        }).then((response) => __awaiter(this, void 0, void 0, function* () {
+            const result = response.data;
             if (result.length < 1) {
-                res.status(400).json({ masssage: "wrong email or password" });
-                connection.end();
+                res.status(400).json({ message: "wrong email or password" });
                 return;
             }
             const hashedPassword = result[0].password;
@@ -58,26 +53,23 @@ function login(req, res) {
                     phone: result[0].phone
                 };
                 // generate token
-                const token = jsonwebtoken_1.default.sign({ userID: user.id }, process.env.SECRET_KEY, {
-                    expiresIn: process.env.SECRET_KEY_EXPIRE_IN
-                });
+                const token = (0, encode_1.default)({ userID: user.id }, process.env.SECRET_KEY, process.env.SECRET_KEY_EXPIRE_IN);
                 // genrate refresh token
-                const refreshToken = jsonwebtoken_1.default.sign({ userID: user.id }, process.env.REFRESH_KEY, {
-                    expiresIn: process.env.REFRESH_KEY_EXPIRE_IN
-                });
+                const refreshToken = (0, encode_1.default)({ userID: user.id }, process.env.REFRESH_KEY, process.env.REFRESH_KEY_EXPIRE_IN);
                 res.cookie("jwt", refreshToken, {
                     httpOnly: true,
                     secure: true,
-                    sameSite: "None",
-                    maxAge: (0, functions_1.timeConvert)(4, "mo", "mi")
+                    sameSite: "none",
+                    maxAge: (0, time_convert_1.default)(4, "mo", "mi")
                 });
                 res.json({ data: user, token: token });
             }
             else {
-                res.status(400).json({ masssage: "wrong email or password" });
+                res.status(400).json({ message: "wrong email or password" });
             }
-            connection.end();
-        }));
+        })).catch((err) => {
+            res.status(500).json({ message: err.message });
+        });
     }
     catch (err) {
         res.status(400).json(err);

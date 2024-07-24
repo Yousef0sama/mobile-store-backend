@@ -14,52 +14,57 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const axios_1 = __importDefault(require("axios"));
 // db
 const Conn_1 = require("../../../config/db/Conn");
 // functions
-const functions_1 = require("../../../functions/functions");
+const time_convert_1 = __importDefault(require("../../../functions/time_convert/time_convert"));
+const check_inputs_1 = __importDefault(require("../../../functions/check_inputs/check_inputs"));
+const encode_1 = __importDefault(require("../../../functions/jwt/encode/encode"));
 function register(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const { name, email, password, phone } = req.body;
             // if inputs is empty and check it's type
-            if (!(0, functions_1.checkType)(name, "string") || (0, functions_1.isEmpty)(name)) {
-                res.status(400).json({ masssage: "name can't be empty and must be string" });
+            if ((0, check_inputs_1.default)(name, "string", "name")) {
+                res.status(400).json({ message: (0, check_inputs_1.default)(name, "string", "name") });
                 return;
             }
-            if (!(0, functions_1.checkType)(email, "string") || (0, functions_1.isEmpty)(email)) {
-                res.status(400).json({ masssage: "email can't be empty and must be string" });
+            if ((0, check_inputs_1.default)(email, "string", "email")) {
+                res.status(400).json({ message: (0, check_inputs_1.default)(email, "string", "email") });
                 return;
             }
-            if (!(0, functions_1.checkType)(password, "string") || (0, functions_1.isEmpty)(password)) {
-                res.status(400).json({ masssage: "password can't be empty and must be string" });
+            if ((0, check_inputs_1.default)(password, "string", "password")) {
+                res.status(400).json({ message: (0, check_inputs_1.default)(password, "string", "password") });
                 return;
             }
-            if (!(0, functions_1.checkType)(phone, "string") || (0, functions_1.isEmpty)(phone)) {
-                res.status(400).json({ masssage: "phone can't be empty and must be string" });
+            if ((0, check_inputs_1.default)(phone, "string", "phone")) {
+                res.status(400).json({ message: (0, check_inputs_1.default)(phone, "string", "phone") });
                 return;
             }
             // hash the password
-            const hashedPassword = yield bcrypt_1.default.hash(password, 10);
-            // create the connection
-            let connection = (0, Conn_1.createConnection)();
-            connection.connect();
-            // Check if email already exists
-            connection.query(`SELECT email FROM users WHERE email = ?`, [email], (err, result) => {
-                if (err) {
-                    res.status(500).json(err);
-                    connection.end();
+            const host = `${req.protocol}://${req.get('host')}`;
+            axios_1.default.get(`${host}/usersForBackend/email/${email}`, {
+                headers: {
+                    Authorization: `Bearer ${(0, encode_1.default)({}, process.env.BACKEND_KEY, 5)}`
+                },
+            }).then((response) => __awaiter(this, void 0, void 0, function* () {
+                const data = response.data;
+                if (data.length > 0) {
+                    res.status(400).json({ message: "email is exist" });
                     return;
                 }
-                if (result.length > 0) {
-                    res.status(400).json({ masssage: "email is already exist" });
-                    connection.end();
-                    return;
-                }
+                // create the connection
+                const hashedPassword = yield bcrypt_1.default.hash(password, 10);
+                let connection = (0, Conn_1.createConnection)();
+                connection.connect();
                 // Insert new user if email does not exist
                 connection.query(`INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)`, [name, email, hashedPassword, phone], (err, result) => {
                     connection.end();
+                    if (err) {
+                        res.status(500).json(err);
+                        return;
+                    }
                     const user = {
                         id: result.insertId,
                         name,
@@ -67,26 +72,19 @@ function register(req, res) {
                         phone,
                     };
                     // genrate access token
-                    const token = jsonwebtoken_1.default.sign({ userID: user.id }, process.env.SECRET_KEY, {
-                        expiresIn: process.env.SECRET_KEY_EXPIRE_IN
-                    });
+                    const token = (0, encode_1.default)({ userID: user.id }, process.env.SECRET_KEY, process.env.SECRET_KEY_EXPIRE_IN);
                     // genrate refresh token
-                    const refreshToken = jsonwebtoken_1.default.sign({ userID: user.id }, process.env.REFRESH_KEY, {
-                        expiresIn: process.env.REFRESH_KEY_EXPIRE_IN
-                    });
+                    const refreshToken = (0, encode_1.default)({ userID: user.id }, process.env.REFRESH_KEY, process.env.REFRESH_KEY_EXPIRE_IN);
                     res.cookie("jwt", refreshToken, {
                         httpOnly: true,
                         secure: true,
-                        sameSite: "None",
-                        maxAge: (0, functions_1.timeConvert)(4, "mo", "mi")
+                        sameSite: "none",
+                        maxAge: (0, time_convert_1.default)(4, "mo", "mi")
                     });
-                    if (err) {
-                        res.status(500).json(err);
-                    }
-                    else {
-                        res.status(201).json({ data: user, token });
-                    }
+                    res.status(201).json({ data: user, token });
                 });
+            })).catch((err) => {
+                res.status(500).json({ message: err.message });
             });
         }
         catch (err) {
